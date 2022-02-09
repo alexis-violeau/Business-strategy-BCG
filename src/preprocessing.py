@@ -1,5 +1,10 @@
 import pandas as pd
 from datetime import datetime
+from sklearn.model_selection import train_test_split
+from tqdm import tqdm
+
+FEATURES = ['sales_net','quantity','mean_sales','mean_quantity','n_orders','days_since_last_order','days_client','month']
+TARGET = ['churn']
 
 
 def preprocess_data(df):
@@ -16,7 +21,7 @@ def preprocess_data(df):
     old_date = datetime.strptime('01/01/2017', "%d/%m/%Y")
     date_lim = datetime.strptime('01/01/2019', "%d/%m/%Y")
 
-    for row in df2.itertuples():
+    for row in tqdm(df2.itertuples()):
         client_id = row[1]
         
         quantity = row[4]
@@ -63,5 +68,10 @@ def preprocess_data(df):
 
     df_train = df2[df2['churn'] != -1]
     df_test = df2[df2['churn'] == -1]
+    
+    X_train, X_val, y_train, y_val = train_test_split(df_train[FEATURES],df_train[TARGET])
+    
+    X_test = df_test[FEATURES]
 
-    return df_train, df_test
+    return X_train, X_val, X_test, y_train, y_val
+
