@@ -1,77 +1,45 @@
 import pandas as pd
 from datetime import datetime
 from sklearn.model_selection import train_test_split
-from tqdm import tqdm
+import numpy as np
 
-FEATURES = ['sales_net','quantity','mean_sales','mean_quantity','n_orders','days_since_last_order','days_client','month']
+FEATURES = ['mean_sales', 'mean_quantity','mean_product_per_order', 'n_orders', 'average_return_time', 'duration',
+            'last_order_month', 'sales_net', 'quantity', 'product_id','time_since_last_command']
 TARGET = ['churn']
 
 
 def preprocess_data(df):
+    '''Preprocessing transaction dataset'''
+    
+    #Aggregate orders by order date
+    df_client_order = df.groupby(['client_id','date_order']).agg({'sales_net':'mean','quantity':'mean','product_id':'count'}).sort_index()
+    df_client_order = df_client_order.reset_index()
+    
+    df_client_order['time_since_last_command'] = (df_client_order['date_order'] - df_client_order.groupby('client_id').shift(1)['date_order']).dt.days #Compute time between commands
+    
+    #Compute features at the client level
+    df_client = df_client_order.groupby('client_id').agg(last_order = ('date_order','max'),
+                                                     first_order = ('date_order','min'),
+                                                     mean_sales = ('sales_net','mean'),
+                                                     mean_quantity = ('quantity','mean'),
+                                                     mean_product_per_order = ('product_id','mean'),
+                                                     n_orders = ('product_id','count'),
+                                                     average_return_time = ('time_since_last_command','mean')).reset_index().dropna()
+    df_client['duration'] = (df_client['last_order'] - df_client['first_order']).dt.days
+    df_client['last_order_month'] = df_client['last_order'].dt.month
 
-    df2 = df[['date_order','client_id','sales_net','quantity']].groupby(['client_id','date_order']).agg({'sales_net' : 'sum', 'quantity' : 'sum'}).reset_index().sort_values(['client_id','date_order'])
-
-    old_client_id = -1
-    mean_sales = []
-    mean_quantity = []
-    n_orders = []
-    days_since_last_order = []
-    days_client = []
-    churn = []
-    old_date = datetime.strptime('01/01/2017', "%d/%m/%Y")
+    #We get the information from the last order
+    return df_client.merge(df_client_order, right_on = ['client_id','date_order'], left_on = ['client_id','last_order'])
+    
+    
+    
+def split(data):
+    '''Train test split on the preprocessed data'''
+    #Identify churners in the dataset
     date_lim = datetime.strptime('01/01/2019', "%d/%m/%Y")
-
-    for row in tqdm(df2.itertuples()):
-        client_id = row[1]
-        
-        quantity = row[4]
-        sales = row[3]
-        date = row[2]
-        
-        
-        if old_client_id == client_id:
-            mean_sales.append((mean_sales[-1] * n_orders[-1] + sales)/(n_orders[-1] + 1))
-            mean_quantity.append((mean_quantity[-1] * n_orders[-1] + quantity)/(n_orders[-1] + 1))
-            n_orders.append(n_orders[-1]+1)
-            days_since_last_order.append((date - old_date).days)
-            days_client.append(days_client[-1] + days_since_last_order[-1])
-            churn.append(0)
-            
-        else:
-            mean_sales.append(sales)
-            mean_quantity.append(quantity)
-            n_orders.append(1)
-            days_since_last_order.append(-1)
-            days_client.append(0)
-            
-            if old_date < date_lim:
-                churn.append(1)
-            else:
-                churn.append(-1)
-
-        old_client_id = client_id
-        old_date = date
-        
-    if old_date < date_lim:
-        churn.append(1)
-    else:
-        churn.append(-1)
-        
-    df2['mean_sales'] = mean_sales
-    df2['mean_quantity'] = mean_quantity
-    df2['n_orders'] = n_orders
-    df2['days_since_last_order'] = days_since_last_order
-    df2['churn'] = churn[1:]
-    df2['month'] = df2['date_order'].dt.month
-    df2['days_client'] = days_client
-
-
-    df_train = df2[df2['churn'] != -1]
-    df_test = df2[df2['churn'] == -1]
+    data['churn'] = data['last_order'] < date_lim
     
-    X_train, X_val, y_train, y_val = train_test_split(df_train[FEATURES],df_train[TARGET])
+    X_train, X_val, y_train, y_val = train_test_split(data[FEATURES],data[TARGET],stratify = data[TARGET])
     
-    X_test = df_test[FEATURES]
-
-    return X_train, X_val, X_test, y_train, y_val
+    return X_train, X_val, y_train, y_val
 

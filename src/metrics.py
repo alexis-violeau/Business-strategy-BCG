@@ -1,16 +1,9 @@
-def lifetime_value(df,client):
-    df_client = df[df['client_id'] == client]
-    duration = df_client['date_order'].max() - df_client['date_order'].min()
-    total_sum = float(df_client['sales_net'].sum())
-    
-    r = 0.05
-    duration_year = duration.days/365
-    dcf = total_sum/duration_year * (1+r)/r
-    
-    return dcf
+def lifetime_value(df_client,r = 0.05):
+    '''Discounted cash flow assuming constant sales per year'''
+    return (365 * df_client['mean_sales'] * df_client['n_orders']/df_client['duration'] * (1+r)/r)[0]
 
 
-def gain(model,df,churn,promotion_ratio = 0.1):
+def model_performance(model,df,churn,promotion_ratio = 0.1):
     r = 0.005
     
     y_pred = model.predict(df)
