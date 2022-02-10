@@ -5,5 +5,10 @@ import matplotlib.pyplot as plt
 
 def evaluate_model(model,X_val,y_val):
     y_pred = model.predict(X_val)
-    sns.heatmap(confusion_matrix(y_val,y_pred),annot = True)
+    plt.title('Confusion matrix')
+    sns.heatmap(confusion_matrix(y_val,y_pred,normalize = 'all'),annot = True,cmap="YlGnBu")
+    plt.xlabel('Prediction')
+    plt.ylabel('Ground truth')
+    plt.xticks([0.5,1.5],['No churn','churn'])
+    plt.yticks([0.5,1.5],['No churn','churn'])
     plt.show()
