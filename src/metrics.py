@@ -1,4 +1,4 @@
-def lifetime_value(df_client,r = 0.05):
+def lifetime_value(df_client,r = 0.02):
     '''Discounted cash flow assuming constant sales per year'''
     return (365 * df_client['mean_sales'] * df_client['n_orders']/df_client['duration'] * (1+r)/r)[0]
 
