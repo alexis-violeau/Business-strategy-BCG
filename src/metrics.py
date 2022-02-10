@@ -3,9 +3,7 @@ def lifetime_value(df_client,r = 0.05):
     return (365 * df_client['mean_sales'] * df_client['n_orders']/df_client['duration'] * (1+r)/r)[0]
 
 
-def model_performance(model,df,churn,promotion_ratio = 0.1):
-    r = 0.005
-    
+def model_performance(model,df,churn,promotion_ratio = 0.3):
     y_pred = model.predict(df)
     
     # When predicting churn, we offer a promotion corresponding to a share of its next order
